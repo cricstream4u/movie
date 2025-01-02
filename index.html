@@ -1,102 +1,186 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TG @cric_stream</title>
-  <link rel="shortcut icon" type="image/x-icon" href="Cric stream Favicon.jpg">
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: black;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLS Video Player</title>
+    <style>
+        /* Style for the video player container */
+        .video-container {
+            position: relative;
+            background-color: #7e879d;
+            border: 2px solid #3586FF;
+            border-radius: 3px;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center; /* Center elements below the video */
+        }
 
-    #video-container {
-      background-color: black;
-      max-width: 100%;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+        /* Ensure play button is centered inside the video */
+        .play-button {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            font-size: 30px;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+            z-index: 2; /* Ensure the button appears above the video */
+        }
 
-    video {
-      width: 100%;
-      height: 100%;
-    }
+        .play-button:hover {
+            opacity: 1;
+        }
 
-    #live-label {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      font-size: 10px;
-      color: white;
-      background-color: rgba(0, 0, 0, 0.2);
-      padding: 4px 8px;
-      border-radius: 10px;
-      display: none;
-      z-index: 10;
-    }
+        .play-button.hidden {
+            display: none;
+        }
 
-    #live-label a {
-      color: white;
-      text-decoration: none;
-      font-weight: bold;
-    }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+        @media (max-width: 600px) {
+            .play-button {
+                width: 12vw; /* Slightly larger on smaller screens */
+                height: 12vw;
+                font-size: 3vw;
+                display: none;
+            }
+        }
+
+        /* Video element styling */
+        video {
+            width: 100%;
+            height: auto;
+            border: 2px solid #87CEEB;
+            position: relative;
+            z-index: 1; /* Ensure it's behind the play button */
+        }
+
+        /* Dropdown controls below the video */
+        .controls {
+            margin-top: 5px;
+            margin-bottom: 5px; /* Add space between video and selectors */
+            display: flex;
+            justify-content: center;
+            gap: 10px; /* Add spacing between the dropdowns */
+        }
+
+        select {
+            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
-  <div id="video-container">
-    <video id="video" controls autoplay></video>
-    <div id="live-label">
-      <center><a href="https://t.me/cric_stream">CRIC <br> STREAM</a></center>
+    <div class="video-container">
+        <video id="video" controls poster="https://laving.cc/g6aujo3y6s7d_xt.jpg?v=133676&quot"></video>
+        <button class="play-button" id="play-button">▶</button>
+        <div class="controls">
+            <select id="quality-select"></select>
+            <select id="language-select"></select>
+        </div>
     </div>
-  </div>
 
-  <script>
-    async function init() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const manifestUri = urlParams.get('url');
-
-      if (!manifestUri) {
-        alert("No video URL provided. Add ?url=YOUR_HLS_URL to the URL.");
-        return;
-      }
-
-      const video = document.getElementById('video');
-      const liveLabel = document.getElementById('live-label');
-
-      if (Hls.isSupported()) {
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        const video = document.getElementById('video');
+        const qualitySelect = document.getElementById('quality-select');
+        const languageSelect = document.getElementById('language-select');
+        const playButton = document.getElementById('play-button');
         const hls = new Hls();
-        hls.loadSource(manifestUri);
-        hls.attachMedia(video);
 
-        hls.on(Hls.Events.MANIFEST_PARSED, function () {
-          console.log("HLS manifest loaded successfully!");
-          liveLabel.style.display = 'block';
+        // Function to get query parameters from URL
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        // Fetch the m3u8 URL from the query parameter
+        const m3u8Url = getQueryParam('url');
+
+        if (m3u8Url && Hls.isSupported()) {
+            hls.loadSource(m3u8Url);
+            hls.attachMedia(video);
+
+            // Event listener for quality selection
+            hls.on(Hls.Events.MANIFEST_LOADED, function(event, data) {
+                const qualities = data.levels;
+                qualities.forEach((level, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `Quality ${index + 1} - ${level.height}p`;
+                    qualitySelect.appendChild(option);
+                });
+
+                // Auto select best quality
+                qualitySelect.value = qualities.length - 1;
+
+                // Update quality on change
+                qualitySelect.addEventListener('change', (e) => {
+                    const selectedQuality = e.target.value;
+                    hls.startLevel = selectedQuality;
+                });
+            });
+
+            // Event listener for language selection
+            hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
+                const tracks = data.audioTracks;
+                tracks.forEach((track, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = track.name;
+                    languageSelect.appendChild(option);
+                });
+
+                // Auto select default language
+                if (tracks.length > 0) {
+                    languageSelect.value = 0;
+                    hls.audioTrack = 0; // Set the initial audio track
+                }
+
+                // Update audio track on change
+                languageSelect.addEventListener('change', (e) => {
+                    const selectedTrack = e.target.value;
+                    hls.audioTrack = selectedTrack;
+                });
+            });
+        } else if (!m3u8Url) {
+            alert('Please provide a valid URL parameter "url" for the HLS stream.');
+        } else {
+            console.error('HLS is not supported in this browser.');
+            alert('Your browser does not support HLS natively. Please use a supported browser or use a plugin.');
+        }
+
+        // Toggle play and pause on button click
+        playButton.addEventListener('click', togglePlay);
+        video.addEventListener('play', () => {
+            playButton.classList.add('hidden');
         });
 
-        hls.on(Hls.Events.ERROR, function (event, data) {
-          console.error("HLS.js Error:", data);
-          alert("Failed to load the video. Please check the URL.");
+        video.addEventListener('pause', () => {
+            playButton.classList.remove('hidden');
         });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Fallback for Safari and native HLS support
-        video.src = manifestUri;
-        video.addEventListener('loadedmetadata', function () {
-          liveLabel.style.display = 'block';
-        });
-        video.addEventListener('error', function () {
-          console.error("Native HLS Error");
-          alert("Failed to load the video. Please check the URL.");
-        });
-      } else {
-        alert("HLS not supported on this browser.");
-      }
-    }
 
-    document.addEventListener('DOMContentLoaded', init);
-  </script>
+        function togglePlay() {
+            if (video.paused) {
+                video.play();
+            } else {
+                video.pause();
+            }
+        }
+    </script>
 </body>
 </html>
