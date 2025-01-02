@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TG @cric_stream</title>
+  <link rel="shortcut icon" type="image/x-icon" href="Cric stream Favicon.jpg">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: black;
+    }
+
+    #video-container {
+      background-color: black;
+      max-width: 100%;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+    }
+
+    #live-label {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 10px;
+      color: white;
+      background-color: rgba(0, 0, 0, 0.2);
+      padding: 4px 8px;
+      border-radius: 10px;
+      display: none;
+      z-index: 10;
+    }
+
+    #live-label a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+  <div id="video-container">
+    <video id="video" controls autoplay></video>
+    <div id="live-label">
+      <center><a href="https://t.me/cric_stream">CRIC <br> STREAM</a></center>
+    </div>
+  </div>
+
+  <script>
+    async function init() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const manifestUri = urlParams.get('url');
+
+      if (!manifestUri) {
+        alert("No video URL provided. Add ?url=YOUR_HLS_URL to the URL.");
+        return;
+      }
+
+      const video = document.getElementById('video');
+      const liveLabel = document.getElementById('live-label');
+
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(manifestUri);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
+          console.log("HLS manifest loaded successfully!");
+          liveLabel.style.display = 'block';
+        });
+
+        hls.on(Hls.Events.ERROR, function (event, data) {
+          console.error("HLS.js Error:", data);
+          alert("Failed to load the video. Please check the URL.");
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Fallback for Safari and native HLS support
+        video.src = manifestUri;
+        video.addEventListener('loadedmetadata', function () {
+          liveLabel.style.display = 'block';
+        });
+        video.addEventListener('error', function () {
+          console.error("Native HLS Error");
+          alert("Failed to load the video. Please check the URL.");
+        });
+      } else {
+        alert("HLS not supported on this browser.");
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
